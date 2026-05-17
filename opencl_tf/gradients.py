@@ -87,3 +87,18 @@ def _opencl_bn_training_grad(op, grad_y, grad_mean, grad_var):
 def _opencl_sigmoid_grad(op, grad):
     y = op.outputs[0]
     return [raw_ops.opencl_sigmoid_grad(y, grad)]
+
+
+# ---------------------------------------------------------------------
+# Dense
+# Forward inputs: x [batch, in_f], W [in_f, out_f], b [out_f]
+# Returns one gradient per forward input, in order: grad_x, grad_W, grad_b
+# ---------------------------------------------------------------------
+@ops.RegisterGradient("OpenclDense")
+def _opencl_dense_grad(op, grad):
+    x = op.inputs[0]
+    W = op.inputs[1]
+    grad_x = raw_ops.opencl_dense_backprop_input(grad, W)
+    grad_W = raw_ops.opencl_dense_backprop_weight(x, grad)
+    grad_b = raw_ops.opencl_dense_backprop_bias(grad)
+    return [grad_x, grad_W, grad_b]

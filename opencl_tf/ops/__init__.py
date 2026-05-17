@@ -15,6 +15,12 @@ from .batchnorm import (
     batch_norm_grad,
 )
 from .sigmoid import sigmoid, sigmoid_grad
+from .dense import (
+    dense,
+    dense_backprop_input,
+    dense_backprop_weight,
+    dense_backprop_bias,
+)
 
 __all__ = [
     "conv2d",
@@ -30,4 +36,8 @@ __all__ = [
     "batch_norm_grad",
     "sigmoid",
     "sigmoid_grad",
+    "dense",
+    "dense_backprop_input",
+    "dense_backprop_weight",
+    "dense_backprop_bias",
 ]

@@ -31,6 +31,10 @@ from .ops import (
     batch_norm_grad,
     sigmoid,
     sigmoid_grad,
+    dense,
+    dense_backprop_input,
+    dense_backprop_weight,
+    dense_backprop_bias,
 )
 from . import gradients  # noqa: F401  -- registers @RegisterGradient hooks
 from . import layers
@@ -50,6 +54,10 @@ __all__ = [
     "batch_norm_grad",
     "sigmoid",
     "sigmoid_grad",
+    "dense",
+    "dense_backprop_input",
+    "dense_backprop_weight",
+    "dense_backprop_bias",
     "layers",
 ]
 

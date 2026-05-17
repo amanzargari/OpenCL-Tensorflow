@@ -19,6 +19,7 @@ from .ops.conv2d import conv2d
 from .ops.depthwise_conv2d import depthwise_conv2d
 from .ops.relu import relu
 from .ops.sigmoid import sigmoid
+from .ops.dense import dense
 
 
 def _as_pair(x) -> Tuple[int, int]:
@@ -227,3 +228,64 @@ class OpenCLSigmoid(layers.Layer):
 
     def get_config(self):
         return super().get_config()
+
+
+# ---------------------------------------------------------------------
+# Dense (fully connected)
+# ---------------------------------------------------------------------
+class OpenCLDense(layers.Layer):
+    """Drop-in for `tf.keras.layers.Dense` without an activation arg.
+
+    Activations are separate ops in this project — compose OpenCLDense
+    with OpenCLReLU / OpenCLSigmoid as needed.
+    """
+
+    def __init__(
+        self,
+        units: int,
+        use_bias: bool = True,
+        kernel_initializer="glorot_uniform",
+        bias_initializer="zeros",
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.units = int(units)
+        self.use_bias = bool(use_bias)
+        self.kernel_initializer = initializers.get(kernel_initializer)
+        self.bias_initializer   = initializers.get(bias_initializer)
+        self.kernel = None
+        self.bias   = None
+
+    def build(self, input_shape):
+        in_features = int(input_shape[-1])
+        self.kernel = self.add_weight(
+            name="kernel",
+            shape=(in_features, self.units),
+            initializer=self.kernel_initializer,
+            trainable=True,
+        )
+        if self.use_bias:
+            self.bias = self.add_weight(
+                name="bias",
+                shape=(self.units,),
+                initializer=self.bias_initializer,
+                trainable=True,
+            )
+        super().build(input_shape)
+
+    def call(self, x):
+        if self.use_bias:
+            return dense(x, self.kernel, self.bias)
+        # Synthesise a zero bias so the raw op signature is always (x, W, b).
+        b = tf.zeros((self.units,), dtype=x.dtype)
+        return dense(x, self.kernel, b)
+
+    def get_config(self):
+        cfg = super().get_config()
+        cfg.update(
+            units=self.units,
+            use_bias=self.use_bias,
+            kernel_initializer=initializers.serialize(self.kernel_initializer),
+            bias_initializer=initializers.serialize(self.bias_initializer),
+        )
+        return cfg
