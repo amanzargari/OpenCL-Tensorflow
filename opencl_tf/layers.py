@@ -165,13 +165,13 @@ class OpenCLBatchNormalization(layers.Layer):
 
     def build(self, input_shape):
         C = int(input_shape[-1])
-        self.gamma = self.add_weight("gamma", shape=(C,),
+        self.gamma = self.add_weight(name="gamma", shape=(C,),
                                      initializer="ones",  trainable=True)
-        self.beta  = self.add_weight("beta",  shape=(C,),
+        self.beta  = self.add_weight(name="beta",  shape=(C,),
                                      initializer="zeros", trainable=True)
-        self.moving_mean = self.add_weight("moving_mean", shape=(C,),
+        self.moving_mean = self.add_weight(name="moving_mean", shape=(C,),
                                            initializer="zeros", trainable=False)
-        self.moving_var  = self.add_weight("moving_variance", shape=(C,),
+        self.moving_var  = self.add_weight(name="moving_variance", shape=(C,),
                                            initializer="ones",  trainable=False)
         super().build(input_shape)
 

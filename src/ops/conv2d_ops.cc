@@ -157,30 +157,29 @@ class OpenclConv2dOp : public OpKernel {
                                out_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc output buffer");
 
-    int a = 0;
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_in.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_fil.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_out.m);
-    clSetKernelArg(k, a++, sizeof(int), &N);
-    clSetKernelArg(k, a++, sizeof(int), &H);
-    clSetKernelArg(k, a++, sizeof(int), &W);
-    clSetKernelArg(k, a++, sizeof(int), &Cin);
-    clSetKernelArg(k, a++, sizeof(int), &kH);
-    clSetKernelArg(k, a++, sizeof(int), &kW);
-    clSetKernelArg(k, a++, sizeof(int), &Cout);
-    clSetKernelArg(k, a++, sizeof(int), &sH);
-    clSetKernelArg(k, a++, sizeof(int), &sW);
-    clSetKernelArg(k, a++, sizeof(int), &padH);
-    clSetKernelArg(k, a++, sizeof(int), &padW);
-    clSetKernelArg(k, a++, sizeof(int), &Hout);
-    clSetKernelArg(k, a++, sizeof(int), &Wout);
-
     const size_t global_raw    = (size_t)N * Hout * Wout * Cout;
     const size_t local         = kDefaultLocalSize;
     const size_t global_padded = RoundUp(global_raw, local);
 
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      int a = 0;
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_in.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_fil.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_out.m);
+      clSetKernelArg(k, a++, sizeof(int), &N);
+      clSetKernelArg(k, a++, sizeof(int), &H);
+      clSetKernelArg(k, a++, sizeof(int), &W);
+      clSetKernelArg(k, a++, sizeof(int), &Cin);
+      clSetKernelArg(k, a++, sizeof(int), &kH);
+      clSetKernelArg(k, a++, sizeof(int), &kW);
+      clSetKernelArg(k, a++, sizeof(int), &Cout);
+      clSetKernelArg(k, a++, sizeof(int), &sH);
+      clSetKernelArg(k, a++, sizeof(int), &sW);
+      clSetKernelArg(k, a++, sizeof(int), &padH);
+      clSetKernelArg(k, a++, sizeof(int), &padW);
+      clSetKernelArg(k, a++, sizeof(int), &Hout);
+      clSetKernelArg(k, a++, sizeof(int), &Wout);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global_padded, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue forward kernel");
@@ -282,30 +281,29 @@ class OpenclConv2dBackpropInputOp : public OpKernel {
                                gi_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc grad_in buffer");
 
-    int a = 0;
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_go.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_fil.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_gi.m);
-    clSetKernelArg(k, a++, sizeof(int), &N);
-    clSetKernelArg(k, a++, sizeof(int), &H);
-    clSetKernelArg(k, a++, sizeof(int), &W);
-    clSetKernelArg(k, a++, sizeof(int), &Cin);
-    clSetKernelArg(k, a++, sizeof(int), &kH);
-    clSetKernelArg(k, a++, sizeof(int), &kW);
-    clSetKernelArg(k, a++, sizeof(int), &Cout);
-    clSetKernelArg(k, a++, sizeof(int), &sH);
-    clSetKernelArg(k, a++, sizeof(int), &sW);
-    clSetKernelArg(k, a++, sizeof(int), &padH);
-    clSetKernelArg(k, a++, sizeof(int), &padW);
-    clSetKernelArg(k, a++, sizeof(int), &Hout);
-    clSetKernelArg(k, a++, sizeof(int), &Wout);
-
     const size_t global_raw    = (size_t)N * H * W * Cin;
     const size_t local         = kDefaultLocalSize;
     const size_t global_padded = RoundUp(global_raw, local);
 
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      int a = 0;
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_go.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_fil.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_gi.m);
+      clSetKernelArg(k, a++, sizeof(int), &N);
+      clSetKernelArg(k, a++, sizeof(int), &H);
+      clSetKernelArg(k, a++, sizeof(int), &W);
+      clSetKernelArg(k, a++, sizeof(int), &Cin);
+      clSetKernelArg(k, a++, sizeof(int), &kH);
+      clSetKernelArg(k, a++, sizeof(int), &kW);
+      clSetKernelArg(k, a++, sizeof(int), &Cout);
+      clSetKernelArg(k, a++, sizeof(int), &sH);
+      clSetKernelArg(k, a++, sizeof(int), &sW);
+      clSetKernelArg(k, a++, sizeof(int), &padH);
+      clSetKernelArg(k, a++, sizeof(int), &padW);
+      clSetKernelArg(k, a++, sizeof(int), &Hout);
+      clSetKernelArg(k, a++, sizeof(int), &Wout);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global_padded, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue bp-input kernel");
@@ -409,30 +407,29 @@ class OpenclConv2dBackpropFilterOp : public OpKernel {
                               gw_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc grad_filter buffer");
 
-    int a = 0;
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_in.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_go.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_gw.m);
-    clSetKernelArg(k, a++, sizeof(int), &N);
-    clSetKernelArg(k, a++, sizeof(int), &H);
-    clSetKernelArg(k, a++, sizeof(int), &W);
-    clSetKernelArg(k, a++, sizeof(int), &Cin);
-    clSetKernelArg(k, a++, sizeof(int), &kH);
-    clSetKernelArg(k, a++, sizeof(int), &kW);
-    clSetKernelArg(k, a++, sizeof(int), &Cout);
-    clSetKernelArg(k, a++, sizeof(int), &sH);
-    clSetKernelArg(k, a++, sizeof(int), &sW);
-    clSetKernelArg(k, a++, sizeof(int), &padH);
-    clSetKernelArg(k, a++, sizeof(int), &padW);
-    clSetKernelArg(k, a++, sizeof(int), &Hout);
-    clSetKernelArg(k, a++, sizeof(int), &Wout);
-
     const size_t global_raw    = (size_t)kH * kW * Cin * Cout;
     const size_t local         = kDefaultLocalSize;
     const size_t global_padded = RoundUp(global_raw, local);
 
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      int a = 0;
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_in.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_go.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_gw.m);
+      clSetKernelArg(k, a++, sizeof(int), &N);
+      clSetKernelArg(k, a++, sizeof(int), &H);
+      clSetKernelArg(k, a++, sizeof(int), &W);
+      clSetKernelArg(k, a++, sizeof(int), &Cin);
+      clSetKernelArg(k, a++, sizeof(int), &kH);
+      clSetKernelArg(k, a++, sizeof(int), &kW);
+      clSetKernelArg(k, a++, sizeof(int), &Cout);
+      clSetKernelArg(k, a++, sizeof(int), &sH);
+      clSetKernelArg(k, a++, sizeof(int), &sW);
+      clSetKernelArg(k, a++, sizeof(int), &padH);
+      clSetKernelArg(k, a++, sizeof(int), &padW);
+      clSetKernelArg(k, a++, sizeof(int), &Hout);
+      clSetKernelArg(k, a++, sizeof(int), &Wout);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global_padded, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue bp-filter kernel");

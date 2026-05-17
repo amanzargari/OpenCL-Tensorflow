@@ -84,14 +84,13 @@ class OpenclSigmoidOp : public OpKernel {
     ClMem d_out(clCreateBuffer(cl.Context(), CL_MEM_WRITE_ONLY, bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc output");
 
-    clSetKernelArg(k, 0, sizeof(cl_mem), &d_in.m);
-    clSetKernelArg(k, 1, sizeof(cl_mem), &d_out.m);
-    clSetKernelArg(k, 2, sizeof(int),    &total);
-
     const size_t local  = kDefaultLocalSize;
     const size_t global = RoundUp((size_t)total, local);
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      clSetKernelArg(k, 0, sizeof(cl_mem), &d_in.m);
+      clSetKernelArg(k, 1, sizeof(cl_mem), &d_out.m);
+      clSetKernelArg(k, 2, sizeof(int),    &total);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue sigmoid_forward");
@@ -155,15 +154,14 @@ class OpenclSigmoidGradOp : public OpKernel {
     ClMem d_gx(clCreateBuffer(cl.Context(), CL_MEM_WRITE_ONLY, bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc grad_x");
 
-    clSetKernelArg(k, 0, sizeof(cl_mem), &d_dy.m);
-    clSetKernelArg(k, 1, sizeof(cl_mem), &d_y.m);
-    clSetKernelArg(k, 2, sizeof(cl_mem), &d_gx.m);
-    clSetKernelArg(k, 3, sizeof(int),    &total);
-
     const size_t local  = kDefaultLocalSize;
     const size_t global = RoundUp((size_t)total, local);
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      clSetKernelArg(k, 0, sizeof(cl_mem), &d_dy.m);
+      clSetKernelArg(k, 1, sizeof(cl_mem), &d_y.m);
+      clSetKernelArg(k, 2, sizeof(cl_mem), &d_gx.m);
+      clSetKernelArg(k, 3, sizeof(int),    &total);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue sigmoid_backward");

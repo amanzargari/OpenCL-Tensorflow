@@ -122,19 +122,18 @@ class OpenclDenseOp : public OpKernel {
     ClMem d_y(clCreateBuffer(cl.Context(), CL_MEM_WRITE_ONLY, y_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc y");
 
-    int a = 0;
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_x.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_W.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_b.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_y.m);
-    clSetKernelArg(k, a++, sizeof(int),    &batch);
-    clSetKernelArg(k, a++, sizeof(int),    &in_f);
-    clSetKernelArg(k, a++, sizeof(int),    &out_f);
-
     const size_t local  = kDefaultLocalSize;
     const size_t global = RoundUp((size_t)batch * out_f, local);
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      int a = 0;
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_x.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_W.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_b.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_y.m);
+      clSetKernelArg(k, a++, sizeof(int),    &batch);
+      clSetKernelArg(k, a++, sizeof(int),    &in_f);
+      clSetKernelArg(k, a++, sizeof(int),    &out_f);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue dense_forward");
@@ -207,18 +206,17 @@ class OpenclDenseBackpropInputOp : public OpKernel {
     ClMem d_gx(clCreateBuffer(cl.Context(), CL_MEM_WRITE_ONLY, gx_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc grad_x");
 
-    int a = 0;
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_gy.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_W.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_gx.m);
-    clSetKernelArg(k, a++, sizeof(int),    &batch);
-    clSetKernelArg(k, a++, sizeof(int),    &in_f);
-    clSetKernelArg(k, a++, sizeof(int),    &out_f);
-
     const size_t local  = kDefaultLocalSize;
     const size_t global = RoundUp((size_t)batch * in_f, local);
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      int a = 0;
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_gy.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_W.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_gx.m);
+      clSetKernelArg(k, a++, sizeof(int),    &batch);
+      clSetKernelArg(k, a++, sizeof(int),    &in_f);
+      clSetKernelArg(k, a++, sizeof(int),    &out_f);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue dense_backprop_input");
@@ -292,18 +290,17 @@ class OpenclDenseBackpropWeightOp : public OpKernel {
     ClMem d_gW(clCreateBuffer(cl.Context(), CL_MEM_WRITE_ONLY, gW_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc grad_W");
 
-    int a = 0;
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_x.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_gy.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_gW.m);
-    clSetKernelArg(k, a++, sizeof(int),    &batch);
-    clSetKernelArg(k, a++, sizeof(int),    &in_f);
-    clSetKernelArg(k, a++, sizeof(int),    &out_f);
-
     const size_t local  = kDefaultLocalSize;
     const size_t global = RoundUp((size_t)in_f * out_f, local);
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      int a = 0;
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_x.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_gy.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_gW.m);
+      clSetKernelArg(k, a++, sizeof(int),    &batch);
+      clSetKernelArg(k, a++, sizeof(int),    &in_f);
+      clSetKernelArg(k, a++, sizeof(int),    &out_f);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue dense_backprop_weight");
@@ -363,16 +360,15 @@ class OpenclDenseBackpropBiasOp : public OpKernel {
     ClMem d_gb(clCreateBuffer(cl.Context(), CL_MEM_WRITE_ONLY, gb_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc grad_b");
 
-    int a = 0;
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_gy.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_gb.m);
-    clSetKernelArg(k, a++, sizeof(int),    &batch);
-    clSetKernelArg(k, a++, sizeof(int),    &out_f);
-
     const size_t local  = kDefaultLocalSize;
     const size_t global = RoundUp((size_t)out_f, local);
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      int a = 0;
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_gy.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_gb.m);
+      clSetKernelArg(k, a++, sizeof(int),    &batch);
+      clSetKernelArg(k, a++, sizeof(int),    &out_f);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue dense_backprop_bias");

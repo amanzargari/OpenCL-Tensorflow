@@ -28,30 +28,57 @@ CLBackend::CLBackend() {
     std::vector<cl_platform_id> platforms(nplat);
     clGetPlatformIDs(nplat, platforms.data(), nullptr);
 
-    // Prefer the first platform that exposes a GPU.
-    for (cl_platform_id p : platforms) {
-        cl_uint nd = 0;
-        if (clGetDeviceIDs(p, CL_DEVICE_TYPE_GPU, 0, nullptr, &nd) == CL_SUCCESS
-            && nd > 0) {
-            plat_ = p;
-            clGetDeviceIDs(p, CL_DEVICE_TYPE_GPU, 1, &dev_, nullptr);
-            break;
-        }
-    }
-    // Fall back to any device type if no GPU is found.
-    if (!plat_) {
+    // Build a list of candidate (platform, device) pairs: GPUs first,
+    // then any other device type, so we prefer GPU over CPU.
+    struct Candidate { cl_platform_id plat; cl_device_id dev; };
+    std::vector<Candidate> candidates;
+    for (int pass = 0; pass < 2; ++pass) {
+        cl_device_type dtype = (pass == 0) ? CL_DEVICE_TYPE_GPU : CL_DEVICE_TYPE_ALL;
         for (cl_platform_id p : platforms) {
             cl_uint nd = 0;
-            if (clGetDeviceIDs(p, CL_DEVICE_TYPE_ALL, 0, nullptr, &nd) == CL_SUCCESS
-                && nd > 0) {
-                plat_ = p;
-                clGetDeviceIDs(p, CL_DEVICE_TYPE_ALL, 1, &dev_, nullptr);
-                break;
+            if (clGetDeviceIDs(p, dtype, 0, nullptr, &nd) != CL_SUCCESS || nd == 0) continue;
+            std::vector<cl_device_id> devs(nd);
+            clGetDeviceIDs(p, dtype, nd, devs.data(), nullptr);
+            for (cl_device_id d : devs) {
+                // Skip devices already added in the GPU pass.
+                bool dup = false;
+                for (auto& c : candidates) if (c.dev == d) { dup = true; break; }
+                if (!dup) candidates.push_back({p, d});
             }
         }
     }
-    if (!plat_ || !dev_) {
+    if (candidates.empty()) {
         throw std::runtime_error("OpenCL: no usable device found");
+    }
+
+    // Probe each candidate by trying to compile a trivial kernel.
+    // This skips platforms whose runtime compiler is broken (e.g. Rusticl
+    // without the LLVM SPIR-V backend).
+    static constexpr const char* kProbeKernel = "kernel void _probe() {}";
+    bool found = false;
+    for (auto& c : candidates) {
+        cl_int ce = CL_SUCCESS;
+        cl_context test_ctx = clCreateContext(nullptr, 1, &c.dev, nullptr, nullptr, &ce);
+        if (ce != CL_SUCCESS || !test_ctx) continue;
+
+        const char* src = kProbeKernel;
+        cl_program prog = clCreateProgramWithSource(test_ctx, 1, &src, nullptr, &ce);
+        bool ok = (ce == CL_SUCCESS && prog &&
+                   clBuildProgram(prog, 1, &c.dev, nullptr, nullptr, nullptr) == CL_SUCCESS);
+        if (prog) clReleaseProgram(prog);
+        clReleaseContext(test_ctx);
+
+        if (ok) {
+            plat_ = c.plat;
+            dev_  = c.dev;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        throw std::runtime_error(
+            "OpenCL: no platform/device can compile kernels. "
+            "Check your OpenCL driver installation.");
     }
 
     ctx_ = clCreateContext(nullptr, 1, &dev_, nullptr, nullptr, &err);

@@ -250,23 +250,22 @@ class OpenclBatchNormInferenceOp : public OpKernel {
     ClMem d_y   (clCreateBuffer(cl.Context(), CL_MEM_WRITE_ONLY, x_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc y");
 
-    int a = 0;
-    clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_x.m);
-    clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_mean.m);
-    clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_var.m);
-    clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_gam.m);
-    clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_bet.m);
-    clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_y.m);
-    clSetKernelArg(k_norm, a++, sizeof(int),    &N);
-    clSetKernelArg(k_norm, a++, sizeof(int),    &H);
-    clSetKernelArg(k_norm, a++, sizeof(int),    &W);
-    clSetKernelArg(k_norm, a++, sizeof(int),    &C);
-    clSetKernelArg(k_norm, a++, sizeof(float),  &epsilon_);
-
     const size_t local  = kDefaultLocalSize;
     const size_t global = RoundUp((size_t)N * H * W * C, local);
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      int a = 0;
+      clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_x.m);
+      clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_mean.m);
+      clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_var.m);
+      clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_gam.m);
+      clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_bet.m);
+      clSetKernelArg(k_norm, a++, sizeof(cl_mem), &d_y.m);
+      clSetKernelArg(k_norm, a++, sizeof(int),    &N);
+      clSetKernelArg(k_norm, a++, sizeof(int),    &H);
+      clSetKernelArg(k_norm, a++, sizeof(int),    &W);
+      clSetKernelArg(k_norm, a++, sizeof(int),    &C);
+      clSetKernelArg(k_norm, a++, sizeof(float),  &epsilon_);
       err = clEnqueueNDRangeKernel(cl.Queue(), k_norm, 1, nullptr,
                                    &global, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue bn_normalize (inf)");

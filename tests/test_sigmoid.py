@@ -6,6 +6,9 @@ import numpy as np
 import tensorflow as tf
 import pytest
 
+import threading
+import time
+
 import opencl_tf
 from opencl_tf.ops.sigmoid import sigmoid, sigmoid_grad
 
@@ -107,3 +110,72 @@ def test_keras_sigmoid_layer_trains():
     for _ in range(5):
         loss_final = float(step())
     assert loss_final < loss0, f"Loss did not decrease: {loss0} -> {loss_final}"
+
+
+# ---------------------------------------------------------------------------
+# Stress tests
+# ---------------------------------------------------------------------------
+
+def test_sigmoid_concurrent_threads():
+    """Fire N_THREADS threads simultaneously, each calling sigmoid on its own
+    tensor.  Validates that the cl_command_queue mutex prevents data races
+    under TF's inter-op thread pool conditions.  All outputs must be
+    numerically correct; any exception in a worker thread is re-raised."""
+    N_THREADS  = 16
+    ITERATIONS = 10  # each thread runs this many sigmoid calls
+
+    errors   = []
+    rng_main = np.random.default_rng(99)
+    # Pre-generate inputs so threads don't race on the RNG.
+    inputs = [
+        rng_main.standard_normal((4, 8, 8, 8)).astype(np.float32)
+        for _ in range(N_THREADS)
+    ]
+    refs = [tf.nn.sigmoid(x).numpy() for x in inputs]
+
+    def worker(tid):
+        try:
+            x = inputs[tid]
+            ref = refs[tid]
+            for _ in range(ITERATIONS):
+                y = sigmoid(x).numpy()
+                if not np.allclose(y, ref, atol=TOL):
+                    max_err = float(np.max(np.abs(y - ref)))
+                    errors.append(
+                        f"thread {tid}: max error {max_err:.2e} exceeds {TOL:.2e}"
+                    )
+                    return
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"thread {tid} raised: {exc}")
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(N_THREADS)]
+    t0 = time.perf_counter()
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    elapsed = time.perf_counter() - t0
+
+    assert not errors, "\n".join(errors)
+    total_calls = N_THREADS * ITERATIONS
+    print(f"\n  concurrent stress: {total_calls} calls, {elapsed:.2f}s "
+          f"({total_calls/elapsed:.0f} calls/s)")
+
+
+def test_sigmoid_stress_sequential():
+    """Run sigmoid 200 times on the same tensor and verify the result is
+    identical every time.  Catches any state leak between kernel invocations
+    (e.g. a forgotten buffer release or a stale cached kernel arg)."""
+    N = 200
+    rng = np.random.default_rng(77)
+    x_np = rng.standard_normal((8, 16, 16, 4)).astype(np.float32)
+    ref  = tf.nn.sigmoid(x_np).numpy()
+
+    t0 = time.perf_counter()
+    for i in range(N):
+        y = sigmoid(x_np).numpy()
+        assert np.allclose(y, ref, atol=TOL), \
+            f"Iteration {i}: max error {float(np.max(np.abs(y - ref))):.2e}"
+    elapsed = time.perf_counter() - t0
+    print(f"\n  sequential stress: {N} calls, {elapsed:.2f}s "
+          f"({N/elapsed:.0f} calls/s)")

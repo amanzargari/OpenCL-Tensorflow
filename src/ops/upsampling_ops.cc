@@ -131,20 +131,19 @@ class OpenclUpsamplingBilinear2dOp : public OpKernel {
     ClMem d_out(clCreateBuffer(cl.Context(), CL_MEM_WRITE_ONLY, out_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc output");
 
-    int a = 0;
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_in.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_out.m);
-    clSetKernelArg(k, a++, sizeof(int),    &N);
-    clSetKernelArg(k, a++, sizeof(int),    &H);
-    clSetKernelArg(k, a++, sizeof(int),    &W);
-    clSetKernelArg(k, a++, sizeof(int),    &C);
-    clSetKernelArg(k, a++, sizeof(int),    &Hout);
-    clSetKernelArg(k, a++, sizeof(int),    &Wout);
-
     const size_t local  = kDefaultLocalSize;
     const size_t global = RoundUp((size_t)total_out, local);
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+      int a = 0;
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_in.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_out.m);
+      clSetKernelArg(k, a++, sizeof(int),    &N);
+      clSetKernelArg(k, a++, sizeof(int),    &H);
+      clSetKernelArg(k, a++, sizeof(int),    &W);
+      clSetKernelArg(k, a++, sizeof(int),    &C);
+      clSetKernelArg(k, a++, sizeof(int),    &Hout);
+      clSetKernelArg(k, a++, sizeof(int),    &Wout);
       err = clEnqueueNDRangeKernel(cl.Queue(), k, 1, nullptr,
                                    &global, &local, 0, nullptr, nullptr);
       OP_REQUIRES_CL(ctx, err, "enqueue upsample_bilinear_forward");
@@ -234,20 +233,20 @@ class OpenclUpsamplingBilinear2dGradOp : public OpKernel {
     ClMem d_gi(clCreateBuffer(cl.Context(), CL_MEM_READ_WRITE, gi_bytes, nullptr, &err));
     OP_REQUIRES_CL(ctx, err, "alloc grad_in");
 
-    int a = 0;
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_go.m);
-    clSetKernelArg(k, a++, sizeof(cl_mem), &d_gi.m);
-    clSetKernelArg(k, a++, sizeof(int),    &N);
-    clSetKernelArg(k, a++, sizeof(int),    &H);
-    clSetKernelArg(k, a++, sizeof(int),    &W);
-    clSetKernelArg(k, a++, sizeof(int),    &C);
-    clSetKernelArg(k, a++, sizeof(int),    &Hout);
-    clSetKernelArg(k, a++, sizeof(int),    &Wout);
-
     const size_t local  = kDefaultLocalSize;
     const size_t global = RoundUp((size_t)total_out, local);
     {
       std::lock_guard<std::mutex> lk(cl.QueueMutex());
+
+      int a = 0;
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_go.m);
+      clSetKernelArg(k, a++, sizeof(cl_mem), &d_gi.m);
+      clSetKernelArg(k, a++, sizeof(int),    &N);
+      clSetKernelArg(k, a++, sizeof(int),    &H);
+      clSetKernelArg(k, a++, sizeof(int),    &W);
+      clSetKernelArg(k, a++, sizeof(int),    &C);
+      clSetKernelArg(k, a++, sizeof(int),    &Hout);
+      clSetKernelArg(k, a++, sizeof(int),    &Wout);
 
       // Zero-fill grad_in before scatter-add. clEnqueueFillBuffer is
       // OpenCL 1.2 core and avoids a separate host memset.
