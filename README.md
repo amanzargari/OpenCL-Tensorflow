@@ -210,6 +210,14 @@ complete end-to-end training loop on the `uwb_loc_v3` model.
 
 ---
 
+## Migration from Keras layers
+
+Looking to port an existing Keras model? See
+[`docs/MIGRATING_FROM_KERAS.md`](docs/MIGRATING_FROM_KERAS.md) for a mapping
+table, limitations, and before/after examples.
+
+---
+
 ## Portable training / weight transfer
 
 Train locally on your AMD GPU, then load weights on any other machine
