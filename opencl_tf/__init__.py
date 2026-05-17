@@ -35,6 +35,8 @@ from .ops import (
     dense_backprop_input,
     dense_backprop_weight,
     dense_backprop_bias,
+    upsampling_bilinear_2d,
+    upsampling_bilinear_2d_grad,
 )
 from . import gradients  # noqa: F401  -- registers @RegisterGradient hooks
 from . import layers
@@ -58,6 +60,8 @@ __all__ = [
     "dense_backprop_input",
     "dense_backprop_weight",
     "dense_backprop_bias",
+    "upsampling_bilinear_2d",
+    "upsampling_bilinear_2d_grad",
     "layers",
 ]
 

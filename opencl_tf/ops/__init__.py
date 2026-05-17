@@ -21,6 +21,7 @@ from .dense import (
     dense_backprop_weight,
     dense_backprop_bias,
 )
+from .upsampling import upsampling_bilinear_2d, upsampling_bilinear_2d_grad
 
 __all__ = [
     "conv2d",
@@ -40,4 +41,6 @@ __all__ = [
     "dense_backprop_input",
     "dense_backprop_weight",
     "dense_backprop_bias",
+    "upsampling_bilinear_2d",
+    "upsampling_bilinear_2d_grad",
 ]

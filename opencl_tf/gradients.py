@@ -102,3 +102,18 @@ def _opencl_dense_grad(op, grad):
     grad_W = raw_ops.opencl_dense_backprop_weight(x, grad)
     grad_b = raw_ops.opencl_dense_backprop_bias(grad)
     return [grad_x, grad_W, grad_b]
+
+
+# ---------------------------------------------------------------------
+# UpSampling2D bilinear
+# Forward inputs: input (the only differentiable input).
+# input_sizes is passed as HostMemory in the backward op; we derive it
+# from the shape of the forward input.
+# ---------------------------------------------------------------------
+@ops.RegisterGradient("OpenclUpsamplingBilinear2d")
+def _opencl_upsampling_bilinear_grad(op, grad):
+    size     = list(op.get_attr("size"))
+    in_shape = tf.shape(op.inputs[0])
+    grad_in  = raw_ops.opencl_upsampling_bilinear2d_grad(
+        grad, in_shape, size=size)
+    return [grad_in]

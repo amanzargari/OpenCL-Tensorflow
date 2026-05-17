@@ -20,6 +20,7 @@ from .ops.depthwise_conv2d import depthwise_conv2d
 from .ops.relu import relu
 from .ops.sigmoid import sigmoid
 from .ops.dense import dense
+from .ops.upsampling import upsampling_bilinear_2d
 
 
 def _as_pair(x) -> Tuple[int, int]:
@@ -288,4 +289,40 @@ class OpenCLDense(layers.Layer):
             kernel_initializer=initializers.serialize(self.kernel_initializer),
             bias_initializer=initializers.serialize(self.bias_initializer),
         )
+        return cfg
+
+
+# ---------------------------------------------------------------------
+# UpSampling2D bilinear
+# ---------------------------------------------------------------------
+class OpenCLUpSampling2D(layers.Layer):
+    """Bilinear 2D upsampling.
+
+    Drop-in for `tf.keras.layers.UpSampling2D(size, interpolation='bilinear')`.
+    Only 'bilinear' interpolation is supported; 'nearest' would require a
+    different kernel and is not implemented.
+    """
+
+    def __init__(
+        self,
+        size=(2, 2),
+        interpolation: str = "bilinear",
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        if interpolation != "bilinear":
+            raise ValueError(
+                f"OpenCLUpSampling2D only supports interpolation='bilinear', "
+                f"got {interpolation!r}. Use tf.keras.layers.UpSampling2D for "
+                f"other methods."
+            )
+        self.size = _as_pair(size)
+        self.interpolation = interpolation
+
+    def call(self, x):
+        return upsampling_bilinear_2d(x, size=list(self.size))
+
+    def get_config(self):
+        cfg = super().get_config()
+        cfg.update(size=self.size, interpolation=self.interpolation)
         return cfg

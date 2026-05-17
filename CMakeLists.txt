@@ -77,6 +77,7 @@ set(OPENCL_TF_SOURCES
     src/ops/batchnorm_ops.cc
     src/ops/sigmoid_ops.cc
     src/ops/dense_ops.cc
+    src/ops/upsampling_ops.cc
 )
 
 add_library(opencl_tf_ops SHARED ${OPENCL_TF_SOURCES})
