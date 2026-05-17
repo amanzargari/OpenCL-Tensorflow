@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opencl-tf"
+version = "0.3.0"
+description = "OpenCL backend for TensorFlow custom ops — train on AMD GPUs without ROCm"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.8"
+keywords = ["tensorflow", "opencl", "amd", "gpu", "deep-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "tensorflow>=2.10,<2.16",
+    "numpy>=1.22",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["opencl_tf*"]
+
+[tool.setuptools.package-data]
+# Kernels are bundled into opencl_tf/kernels/ during the cmake build step.
+# Listing them here ensures they are included in source distributions.
+opencl_tf = ["opencl_tf_ops.so", "kernels/*.cl"]

@@ -25,11 +25,11 @@ transparently. Weights saved locally can be loaded on any TF environment
 |----------------------------|:-------:|:-----:|:-----:|-------------------------------------------|
 | `Conv2D`                   |   ✅    |  ✅   |  ✅   | NHWC, SAME/VALID, any stride              |
 | `DepthwiseConv2D`          |   ✅    |  ✅   |  ✅   | `depth_multiplier` supported              |
-| `BatchNormalization`       |   ✅    |  ✅   |  ✅   | train + inference, EMA maintained in Keras |
+| `BatchNormalization`       |   ✅    |  ✅   |  ✅   | train + inference, EMA in Keras           |
 | `ReLU`                     |   ✅    |  ✅   |   —   | elementwise                               |
 | `Dense`                    |   ✅    |  ✅   |  ✅   | GEMM: one work-item per output element    |
-| `UpSampling2D` (bilinear)  |   ✅    |  ✅   |   —   | half-pixel centres, float atomic scatter-add |
-| `Sigmoid`                  |   ✅    |  ✅   |   —   | backward takes forward output y (not x)  |
+| `UpSampling2D` (bilinear)  |   ✅    |  ✅   |   —   | half-pixel centres; float atomic add      |
+| `Sigmoid`                  |   ✅    |  ✅   |   —   | backward uses y (not x), skips recompute  |
 
 71 tests pass — run `pytest tests/ -v` to verify.
 
@@ -38,7 +38,7 @@ transparently. Weights saved locally can be loaded on any TF environment
 ## Hardware & software targets
 
 | Item | Requirement |
-|---|---|
+| --- | --- |
 | GPU | Any that exposes OpenCL 1.2 via `clinfo` — AMD GCN (Topaz, Tonga, Fiji, Polaris, Vega), Intel integrated, or Mesa CPU fallback |
 | OS | Ubuntu 22.04 / 24.04; other distros work if `clinfo -l` sees your device |
 | OpenCL | 1.2 target; works on 2.0+ ICDs too |
@@ -54,7 +54,19 @@ is not selected, set `OCL_ICD_VENDORS=/etc/OpenCL/vendors/your.icd` before runni
 
 ## Install
 
-### 1. System packages
+### From PyPI (after the package is published)
+
+```bash
+# Binary wheel — no compiler needed, just an OpenCL runtime:
+pip install opencl-tf
+
+# Then verify:
+python -c "import opencl_tf; print(opencl_tf.__version__)"
+```
+
+### From source (this repo)
+
+#### 1. System packages
 
 ```bash
 sudo apt update
@@ -75,19 +87,37 @@ clinfo -l
 #  `-- Device #0: Intel(R) UHD Graphics 620
 ```
 
-### 2. Python deps
+### 2. pip install (recommended)
 
 ```bash
-pip install -r requirements.txt
+pip install .
 ```
 
-### 3. Build the shared library
+This compiles the C++ shared library via CMake, bundles the OpenCL kernel
+sources inside the package, and installs everything into your Python
+environment. After this, `import opencl_tf` works from any directory.
+
+For a development / editable install (the `.so` lives in the repo, no
+copying):
+
+```bash
+pip install -e .
+```
+
+Or compile the `.so` in-place without installing:
+
+```bash
+python setup.py build_ext --inplace
+```
+
+### Alternative: build manually
 
 **Make:**
 
 ```bash
+pip install -r requirements.txt
 make
-# Produces opencl_tf/opencl_tf_ops.so
+# Produces opencl_tf/opencl_tf_ops.so — run from the repo root
 ```
 
 **CMake:**
@@ -100,7 +130,7 @@ cmake --build build -j$(nproc)
 The Makefile auto-detects TF include and link flags from the active Python
 environment (`python3 -c 'import tensorflow as tf; ...'`).
 
-### 4. Smoke test
+### Smoke test
 
 ```bash
 pytest tests/ -v
@@ -224,7 +254,7 @@ if available.
 
 ## Repository layout
 
-```
+```text
 OpenCL-Tensorflow/
 ├── kernels/                          # OpenCL .cl source files
 │   ├── conv2d_kernels.cl

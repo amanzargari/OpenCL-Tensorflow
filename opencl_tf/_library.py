@@ -7,12 +7,19 @@ from pathlib import Path
 
 import tensorflow as tf
 
-_HERE       = Path(__file__).resolve().parent          # .../opencl_tf
-_LIB_PATH   = _HERE / "opencl_tf_ops.so"
-_KERNEL_DIR = (_HERE.parent / "kernels").resolve()      # .../kernels
+_HERE     = Path(__file__).resolve().parent   # .../opencl_tf/
+_LIB_PATH = _HERE / "opencl_tf_ops.so"
 
-# Tell the .so where kernel source files live. Setdefault so users can
-# override (e.g. when running an installed copy from a different layout).
+# Kernel search order:
+#   1. Bundled inside the package (pip-installed copy):  opencl_tf/kernels/
+#   2. Repo root layout (editable / dev checkout):       opencl_tf/../kernels/
+# The C++ CLBackend also honours the OPENCL_TF_KERNELS_PATH env var (step 2
+# in its own search order), so setdefault here lets users override if needed.
+_KERNEL_DIR_BUNDLED = _HERE / "kernels"
+_KERNEL_DIR_DEV     = _HERE.parent / "kernels"
+_KERNEL_DIR = (
+    _KERNEL_DIR_BUNDLED if _KERNEL_DIR_BUNDLED.is_dir() else _KERNEL_DIR_DEV
+)
 os.environ.setdefault("OPENCL_TF_KERNELS_PATH", str(_KERNEL_DIR))
 
 if not _LIB_PATH.exists():

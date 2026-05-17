@@ -101,10 +101,13 @@ target_link_libraries(opencl_tf_ops PRIVATE
     ${CMAKE_DL_LIBS}
 )
 
-set_target_properties(opencl_tf_ops PROPERTIES
-    PREFIX ""
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/opencl_tf"
-)
+# Default output: next to the Python package in the source tree (dev workflow).
+# pip install overrides this via -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=<staging_dir>.
+if(NOT CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/opencl_tf")
+endif()
+
+set_target_properties(opencl_tf_ops PROPERTIES PREFIX "")
 
 # ---------------------------------------------------------------------------
 # Install rules (optional)

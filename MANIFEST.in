@@ -1,0 +1,19 @@
+# Files to include in a source distribution (pip sdist / python setup.py sdist).
+# Binary wheels (.whl) are built from source via CMake; they don't need MANIFEST.in.
+
+include CMakeLists.txt
+include Makefile
+include setup.py
+include pyproject.toml
+include requirements.txt
+include LICENSE
+include README.md
+
+# C++ sources and headers
+recursive-include src *.cc *.h
+
+# OpenCL kernel sources
+recursive-include kernels *.cl
+
+# Python package (excluding __pycache__ and .so — the .so is built at install time)
+recursive-include opencl_tf *.py
