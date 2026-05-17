@@ -9,13 +9,13 @@ Implemented as a set of **TensorFlow custom ops** (forward + backward), each
 backed by hand-written OpenCL kernels. Gradients are registered through
 `tf.RegisterGradient` so `tf.GradientTape` flows through transparently.
 
-> **Status — Phase 2 complete.** The four ops needed for `conv_bn_relu` and
-> `dsconv_block` (Conv2D, DepthwiseConv2D, BatchNormalization, ReLU) are all
-> implemented and tested. The stem + b1 + b2 + b3 + neck portion of the target
-> model trains end-to-end on the OpenCL backend.
+> **Status — Phase 3 complete.** All seven ops (Conv2D, DepthwiseConv2D,
+> BatchNormalization, ReLU, Dense, UpSampling2D bilinear, Sigmoid) are
+> implemented and tested. The entire `build_model()` graph trains end-to-end
+> on the OpenCL backend — see [`examples/train_full_model.py`](examples/train_full_model.py).
 >
-> Phase 3 (Dense, UpSampling2D bilinear, Sigmoid) is up next — see
-> [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> Phase 4 (performance: buffer pool, tiled GEMM, tree-reduction BN) is up
+> next — see [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ---
 
@@ -27,9 +27,9 @@ backed by hand-written OpenCL kernels. Gradients are registered through
 | `DepthwiseConv2D`          |   ✅    |  ✅   |  ✅   | depth_multiplier supported       |
 | `BatchNormalization`       |   ✅    |  ✅   |  ✅   | train + inference; EMA in Keras  |
 | `ReLU`                     |   ✅    |  ✅   |  —    | elementwise                      |
-| `Dense`                    |   ⏳    |  ⏳   |  ⏳   | Phase 3 (GEMM kernel)            |
-| `UpSampling2D` (bilinear)  |   ⏳    |  ⏳   |  —    | Phase 3 (scatter-add backward)   |
-| `Sigmoid`                  |   ⏳    |  ⏳   |  —    | Phase 3                          |
+| `Dense`                    |   ✅    |  ✅   |  ✅   | Phase 3 (GEMM kernel)            |
+| `UpSampling2D` (bilinear)  |   ✅    |  ✅   |  —    | Phase 3 (scatter-add backward)   |
+| `Sigmoid`                  |   ✅    |  ✅   |  —    | Phase 3                          |
 
 ---
 

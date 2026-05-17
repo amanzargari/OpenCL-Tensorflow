@@ -54,19 +54,19 @@ def build_model():
 **Milestone hit:** stem + b1 + b2 + b3 + neck portion of the target model
 trains end-to-end on the OpenCL backend.
 
-## Phase 3 — Head and upsampling
+## Phase 3 — Head and upsampling ✅
 
-- [ ] **Dense** — implement as a dedicated GEMM kernel (re-usable later
-  for swapping in im2col-style Conv2D). Forward + both backwards.
-- [ ] **UpSampling2D (bilinear)** — forward is straightforward; backward
-  is a scatter-add of 4 weighted contributions per output pixel and
-  requires float `atomic_add`. Implement via the `uint`-aliased CAS loop
-  for portability across older AMD ICDs that don't expose
-  `cl_khr_global_int32_base_atomics` with the float overload.
-- [ ] **Sigmoid** — pure element-wise, forward + backward.
+- [x] **Dense** — standalone GEMM kernel (one work-item per output element).
+  Forward + BackpropInput + BackpropWeight + BackpropBias. 13 tests pass.
+- [x] **UpSampling2D (bilinear)** — half-pixel-centre mapping matches
+  `tf.image.resize` default. Backward uses float `atomic_add` via uint CAS
+  loop (OpenCL 1.2 portable) and `clEnqueueFillBuffer` for zero-init.
+  14 tests pass; parity with `tf.keras.layers.UpSampling2D` atol=1e-4.
+- [x] **Sigmoid** — elementwise forward + backward. Backward takes the
+  forward output y (not x) to avoid recomputing sigmoid. 10 tests pass.
 
-Milestone: the entire `build_model()` graph runs forward and trains on
-the OpenCL backend.
+**Milestone hit:** the entire `build_model()` graph runs forward and trains
+on the OpenCL backend. See [`examples/train_full_model.py`](../examples/train_full_model.py).
 
 ## Phase 4 — Performance
 
