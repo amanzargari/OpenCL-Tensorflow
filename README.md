@@ -9,23 +9,27 @@ Implemented as a set of **TensorFlow custom ops** (forward + backward), each
 backed by hand-written OpenCL kernels. Gradients are registered through
 `tf.RegisterGradient` so `tf.GradientTape` flows through transparently.
 
-> **Status — Phase 1 (Conv2D).** Standard 2D convolution forward, backprop-input,
-> and backprop-filter are implemented end-to-end and verified against
-> `tf.nn.conv2d` on four `(stride, padding)` cases. See [`docs/ROADMAP.md`](docs/ROADMAP.md)
-> for the rest of the layer queue.
+> **Status — Phase 2 complete.** The four ops needed for `conv_bn_relu` and
+> `dsconv_block` (Conv2D, DepthwiseConv2D, BatchNormalization, ReLU) are all
+> implemented and tested. The stem + b1 + b2 + b3 + neck portion of the target
+> model trains end-to-end on the OpenCL backend.
+>
+> Phase 3 (Dense, UpSampling2D bilinear, Sigmoid) is up next — see
+> [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ---
 
 ## What's here
 
-| Layer / op                | Forward | dL/dx | dL/dw | Notes                              |
-|---------------------------|:-------:|:-----:|:-----:|------------------------------------|
-| `Conv2D` (`use_bias=False`) |   ✅    |  ✅   |  ✅   | NHWC, SAME/VALID, asymmetric pad    |
-| `DepthwiseConv2D`         |   ⏳    |  ⏳   |  ⏳   | Phase 2                            |
-| `BatchNormalization`      |   ⏳    |  ⏳   |  ⏳   | Phase 2                            |
-| `ReLU`                    |   ⏳    |  ⏳   |       | Phase 2 (trivial)                  |
-| `Dense`                   |   ⏳    |  ⏳   |  ⏳   | Phase 3 (via GEMM kernel)          |
-| `UpSampling2D` (bilinear) |   ⏳    |  ⏳   |       | Phase 3 (scatter-add backward)     |
+| Layer / op                 | Forward | dL/dx | dL/dw | Notes                            |
+|----------------------------|:-------:|:-----:|:-----:|----------------------------------|
+| `Conv2D` (`use_bias=False`)|   ✅    |  ✅   |  ✅   | NHWC, SAME/VALID                 |
+| `DepthwiseConv2D`          |   ✅    |  ✅   |  ✅   | depth_multiplier supported       |
+| `BatchNormalization`       |   ✅    |  ✅   |  ✅   | train + inference; EMA in Keras  |
+| `ReLU`                     |   ✅    |  ✅   |  —    | elementwise                      |
+| `Dense`                    |   ⏳    |  ⏳   |  ⏳   | Phase 3 (GEMM kernel)            |
+| `UpSampling2D` (bilinear)  |   ⏳    |  ⏳   |  —    | Phase 3 (scatter-add backward)   |
+| `Sigmoid`                  |   ⏳    |  ⏳   |  —    | Phase 3                          |
 
 ---
 
@@ -89,30 +93,51 @@ make
 pytest tests/ -v
 ```
 
-You should see all `(strides, padding)` cases pass with max-abs-diff ≤ 1e-4
-against `tf.nn.conv2d`.
+You should see all conv2d, depthwise_conv2d, batchnorm, and relu tests pass.
 
 ---
 
 ## Usage
 
-### Raw op (mirrors `tf.nn.conv2d`)
+### Raw ops
 
 ```python
-import opencl_tf
+import opencl_tf as ocl
 
-y = opencl_tf.conv2d(x, w, strides=(1, 2, 2, 1), padding="SAME")
+y = ocl.conv2d(x, w, strides=(1, 2, 2, 1), padding="SAME")
+z = ocl.depthwise_conv2d(y, dw, strides=(1, 1, 1, 1), padding="SAME")
+b, batch_mean, batch_var = ocl.batch_norm_training(z, gamma, beta, epsilon=1e-3)
+a = ocl.relu(b)
 ```
 
-### Keras layer (drop-in for `Conv2D(use_bias=False)`)
+### Keras layers
 
 ```python
 from tensorflow.keras import Input, Model
-from opencl_tf.layers import OpenCLConv2D
+from opencl_tf.layers import (
+    OpenCLConv2D, OpenCLDepthwiseConv2D,
+    OpenCLBatchNormalization, OpenCLReLU,
+)
+
+def conv_bn_relu(x, filters, kernel_size, strides=1):
+    x = OpenCLConv2D(filters, kernel_size, strides=strides, padding="same")(x)
+    x = OpenCLBatchNormalization()(x)
+    return OpenCLReLU()(x)
+
+def dsconv_block(x, filters, strides):
+    x = OpenCLDepthwiseConv2D(3, strides=strides, padding="same")(x)
+    x = OpenCLBatchNormalization()(x)
+    x = OpenCLReLU()(x)
+    x = OpenCLConv2D(filters, 1, padding="same")(x)
+    x = OpenCLBatchNormalization()(x)
+    return OpenCLReLU()(x)
 
 inp = Input(shape=(64, 64, 3))
-x   = OpenCLConv2D(32, 3, strides=2, padding="same")(inp)
-# ... add the rest of your model
+x   = conv_bn_relu(inp, 48, (3, 7), strides=(1, 2))
+x   = dsconv_block(x, 96,  strides=(2, 2))
+x   = dsconv_block(x, 144, strides=(2, 2))
+x   = dsconv_block(x, 192, strides=(2, 2))
+x   = conv_bn_relu(x, 64, (1, 1))
 model = Model(inp, x)
 ```
 
@@ -122,16 +147,10 @@ Gradients are auto-registered, so `tf.GradientTape` and `model.fit()` Just Work:
 
 ```python
 import tensorflow as tf
-import opencl_tf  # importing the package registers all gradients
+import opencl_tf
 
-w = tf.Variable(tf.random.normal([3, 3, 3, 32]))
-x = tf.random.normal([4, 64, 64, 3])
-
-with tf.GradientTape() as tape:
-    y    = opencl_tf.conv2d(x, w, strides=(1, 1, 1, 1), padding="SAME")
-    loss = tf.reduce_mean(y * y)
-
-gw = tape.gradient(loss, w)   # computed on the OpenCL device
+model.compile(optimizer="adam", loss="mse")
+model.fit(x_train, y_train, epochs=10, batch_size=8)
 ```
 
 ---
@@ -140,29 +159,34 @@ gw = tape.gradient(loss, w)   # computed on the OpenCL device
 
 ```
 OpenCL-Tensorflow/
-├── kernels/                  # OpenCL .cl source files
-│   └── conv2d_kernels.cl
-├── src/                      # C++ TF custom-op sources
-│   ├── cl_backend.h          # CLBackend singleton + RAII helpers
-│   ├── cl_backend.cc
-│   ├── padding_utils.h       # SAME / VALID resolver
+├── kernels/                          # OpenCL .cl source files
+│   ├── conv2d_kernels.cl
+│   ├── depthwise_conv2d_kernels.cl
+│   ├── batchnorm_kernels.cl
+│   └── relu_kernels.cl
+├── src/                              # C++ TF custom-op sources
+│   ├── cl_backend.{h,cc}             # CLBackend singleton + RAII helpers
+│   ├── padding_utils.h               # SAME / VALID resolver
 │   └── ops/
-│       └── conv2d_ops.cc     # REGISTER_OP + OpKernel for the 3 conv2d ops
-├── opencl_tf/                # Python package
+│       ├── conv2d_ops.cc
+│       ├── depthwise_conv2d_ops.cc
+│       ├── batchnorm_ops.cc
+│       └── relu_ops.cc
+├── opencl_tf/                        # Python package
 │   ├── __init__.py
-│   ├── _library.py           # loads opencl_tf_ops.so
-│   ├── gradients.py          # @RegisterGradient bindings
-│   ├── layers.py             # Keras-friendly wrappers
+│   ├── _library.py                   # loads opencl_tf_ops.so
+│   ├── gradients.py                  # @RegisterGradient bindings
+│   ├── layers.py                     # OpenCL{Conv2D,DepthwiseConv2D,BN,ReLU}
 │   └── ops/
-│       └── conv2d.py
-├── tests/
-│   ├── conftest.py
-│   └── test_conv2d.py
-├── examples/
-│   └── train_simple_cnn.py
+│       ├── conv2d.py
+│       ├── depthwise_conv2d.py
+│       ├── relu.py
+│       └── batchnorm.py
+├── tests/                            # pytest suite, parity vs tf.nn.*
+├── examples/train_simple_cnn.py
 ├── docs/
-│   ├── ARCHITECTURE.md       # design decisions, why DEVICE_CPU, etc.
-│   ├── ADDING_NEW_OPS.md     # cookbook for Phase 2+ contributors
+│   ├── ARCHITECTURE.md
+│   ├── ADDING_NEW_OPS.md
 │   └── ROADMAP.md
 ├── .github/workflows/build.yml
 ├── CMakeLists.txt
@@ -176,25 +200,16 @@ OpenCL-Tensorflow/
 ## How it works (one-paragraph version)
 
 The C++ ops are registered on `DEVICE_CPU` — TF gives us host-pointer tensors,
-we copy them into `cl_mem` device buffers, launch a kernel from
-`kernels/conv2d_kernels.cl`, and blocking-read the result back into the output
-tensor TF allocated. A singleton `CLBackend` (in `src/cl_backend.cc`) owns the
-platform/device/context/queue and caches compiled programs and kernels keyed by
-filename. The queue is serialized with a mutex because `cl_command_queue` is
-not thread-safe per spec, and TF will call `Compute()` concurrently from its
-inter-op thread pool. Gradients are registered in `opencl_tf/gradients.py` and
-chain the forward op to two custom backward ops that share the same
-`CLBackend` instance. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for
-the long version.
-
----
-
-## Roadmap
-
-The model we're ultimately backing is in [`docs/ROADMAP.md`](docs/ROADMAP.md);
-short version is: depthwise-separable conv stack → BN/ReLU → flatten → dense
-head → bilinear upsample → final 1×1 conv → sigmoid heatmap. Every op needed
-for that pipeline is listed there with status.
+we copy them into `cl_mem` device buffers, launch a kernel from the
+corresponding file in `kernels/`, and blocking-read the result back into the
+output tensor TF allocated. A singleton `CLBackend` (`src/cl_backend.{h,cc}`)
+owns the platform/device/context/queue and caches compiled programs and
+kernels keyed by filename. The queue is serialized with a mutex because
+`cl_command_queue` is not thread-safe per spec, and TF will call `Compute()`
+concurrently from its inter-op thread pool. Gradients are registered in
+`opencl_tf/gradients.py` and chain forward ops to their backward
+counterparts, all of which share the same `CLBackend` instance. See
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the long version.
 
 ---
 

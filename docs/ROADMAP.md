@@ -39,21 +39,20 @@ def build_model():
 - [x] Keras `OpenCLConv2D` wrapper
 - [x] Correctness tests vs `tf.nn.conv2d` (SAME/VALID, stride 1 & 2)
 
-## Phase 2 — Make `dsconv_block` and `conv_bn_relu` work end-to-end
+## Phase 2 — `dsconv_block` and `conv_bn_relu` end-to-end ✅
 
-These are everything you need before the dense head.
+- [x] **DepthwiseConv2D** — forward, dL/dx, dL/dw. Filter
+  `[kH, kW, C, depth_multiplier]`. Tested across SAME/VALID, stride 1 & 2,
+  depth_multiplier ∈ {1, 2}.
+- [x] **BatchNormalization** — train + inference forward, plus the
+  three-term backward (∂γ, ∂β, ∂x). Two reduction passes (`bn_reduce_stats`
+  and `bn_backward_reduce`) and two elementwise passes (`bn_normalize`,
+  `bn_backward_dx`). Keras layer maintains moving stats via EMA.
+- [x] **ReLU** — elementwise forward and backward. Backward uses
+  TF's `(gradients, features)` convention.
 
-- [ ] **DepthwiseConv2D** — forward, dL/dx, dL/dw. Conceptually simpler
-  than full Conv2D (no Cin reduction). Kernel: `[kH, kW, C, 1]`.
-- [ ] **BatchNormalization** — forward (train + inference modes), and the
-  three-term backward (∂γ, ∂β, ∂x). Two passes: a reduction kernel for
-  batch stats / their gradients, then an element-wise kernel for ∂x.
-- [ ] **ReLU** — forward is `max(0, x)`, backward is a mask. Trivial but
-  worth doing as its own op so we don't lean on TF's CPU kernel for the
-  inner training loop.
-
-Milestone: the stem + b1 + b2 + b3 + neck portion of the model trains
-end-to-end on the OpenCL backend.
+**Milestone hit:** stem + b1 + b2 + b3 + neck portion of the target model
+trains end-to-end on the OpenCL backend.
 
 ## Phase 3 — Head and upsampling
 
@@ -71,12 +70,16 @@ the OpenCL backend.
 
 ## Phase 4 — Performance
 
-Naive direct convolution will leave a lot on the table. Order of attack:
+Naive direct convolution and per-channel serial reductions will leave a
+lot on the table. Order of attack:
 
 - [ ] **Buffer pool** keyed by `(size, role)` on `CLBackend`. Eliminates
   per-call `cl_mem` alloc/release in the hot path.
 - [ ] **Persistent host-pinned staging** with `clEnqueueMapBuffer` so the
   H↔D copies are zero-copy when the runtime supports it.
+- [ ] **Tree-reduction kernels** for BN stats (one work-group per channel,
+  local-memory accumulator) to replace the current "one work-item per
+  channel" pattern.
 - [ ] **Tiled / vectorized Conv2D** kernel (`float4` loads, LDS staging,
   one work-group per output tile). Target: ≥ 50% of device peak GFLOPS
   for the `(3×3, C=144)` block.
@@ -90,7 +93,7 @@ same problem size on the same hardware via Mesa's OpenCL.
 
 ## Phase 5 — Polish
 
-- [ ] CI on GitHub Actions with `pocl` as a software ICD so tests run
-  without GPU hardware.
+- [ ] CI on GitHub Actions with `pocl` as a software ICD (wired up in
+  `.github/workflows/build.yml`).
 - [ ] Optional `pip install .` packaging once the API is stable.
 - [ ] FP16 path for inference (forward only, post-training).

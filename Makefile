@@ -11,7 +11,11 @@ TF_LFLAGS := $(shell python3 -c 'import tensorflow as tf; print(" ".join(tf.sysc
 CXXFLAGS := -std=c++17 -O2 -fPIC -Wall -Wextra -Isrc $(TF_CFLAGS)
 LDFLAGS  := -shared $(TF_LFLAGS) -lOpenCL -ldl
 
-SRC := src/cl_backend.cc src/ops/conv2d_ops.cc
+SRC := src/cl_backend.cc \
+       src/ops/conv2d_ops.cc \
+       src/ops/depthwise_conv2d_ops.cc \
+       src/ops/relu_ops.cc \
+       src/ops/batchnorm_ops.cc
 OBJ := $(SRC:.cc=.o)
 
 TARGET := opencl_tf/opencl_tf_ops.so

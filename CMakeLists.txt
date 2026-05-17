@@ -46,11 +46,14 @@ message(STATUS "OpenCL include: ${OpenCL_INCLUDE_DIRS}")
 message(STATUS "OpenCL libs:    ${OpenCL_LIBRARIES}")
 
 # ---------------------------------------------------------------------------
-# The custom-op shared library
+# Sources
 # ---------------------------------------------------------------------------
 set(OPENCL_TF_SOURCES
     src/cl_backend.cc
     src/ops/conv2d_ops.cc
+    src/ops/depthwise_conv2d_ops.cc
+    src/ops/relu_ops.cc
+    src/ops/batchnorm_ops.cc
 )
 
 add_library(opencl_tf_ops SHARED ${OPENCL_TF_SOURCES})
@@ -61,14 +64,10 @@ target_include_directories(opencl_tf_ops
         ${OpenCL_INCLUDE_DIRS}
 )
 
-# TF wheel ABI flags arrive as a list — apply them as compile options.
 target_compile_options(opencl_tf_ops PRIVATE ${TF_CFLAGS} -Wall -Wextra)
 target_link_options   (opencl_tf_ops PRIVATE ${TF_LFLAGS})
 target_link_libraries (opencl_tf_ops PRIVATE OpenCL::OpenCL ${CMAKE_DL_LIBS})
 
-# TF expects a bare `.so` filename (no `lib` prefix) when calling
-# tf.load_op_library, and the Python package looks for the file next to
-# itself, so put the build output directly into opencl_tf/.
 set_target_properties(opencl_tf_ops PROPERTIES
     PREFIX ""
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/opencl_tf"
