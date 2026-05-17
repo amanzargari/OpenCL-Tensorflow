@@ -63,10 +63,26 @@ trains end-to-end on the OpenCL backend.
   loop (OpenCL 1.2 portable) and `clEnqueueFillBuffer` for zero-init.
   14 tests pass; parity with `tf.keras.layers.UpSampling2D` atol=1e-4.
 - [x] **Sigmoid** — elementwise forward + backward. Backward takes the
-  forward output y (not x) to avoid recomputing sigmoid. 10 tests pass.
+  forward output y (not x) to avoid recomputing sigmoid. 12 tests pass
+  (includes concurrent 16-thread and sequential 1000-step stress tests).
+- [x] **Thread-safety** — all ops: `clSetKernelArg` moved inside
+  `QueueMutex()` alongside `clEnqueue*` calls. The shared `cl_kernel` object
+  is not thread-safe per spec; having only the enqueue inside the lock was a
+  silent race under TF's inter-op thread pool. Caught by the sigmoid
+  concurrent stress test.
+- [x] **Robust platform probe** — `CLBackend` now tries each OpenCL
+  platform by compiling a trivial test kernel and skips platforms whose
+  runtime compiler is broken (e.g. Mesa Rusticl without LLVM SPIR-V).
+- [x] **Portable weight transfer** — `examples/train_portable.py` trains on
+  AMD GPU via OpenCL, saves `.weights.h5`, and the same weights load on any
+  CUDA / CPU TF environment (Colab, etc.) with zero code changes.
+- [x] **GPU stress test** — `tools/stress_gpu.py` runs SGEMM, bandwidth,
+  and mixed SGEMM+LUT benchmarks via raw ctypes OpenCL (no pyopencl needed).
+  Reports GFLOPS and GB/s.
 
 **Milestone hit:** the entire `build_model()` graph runs forward and trains
-on the OpenCL backend. See [`examples/train_full_model.py`](../examples/train_full_model.py).
+on the OpenCL backend. 71 tests pass. See
+[`examples/train_full_model.py`](../examples/train_full_model.py).
 
 ## Phase 4 — Performance
 
