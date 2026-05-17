@@ -5,13 +5,15 @@ Importing this package:
   - Registers gradients for every custom op so `tf.GradientTape` Just Works.
   - Exposes convenience functions and Keras layers.
 
-Phase-2 inventory (forward + gradient unless noted):
+Phase-3 inventory (forward + gradient unless noted):
     conv2d, depthwise_conv2d, relu,
     batch_norm_training (+ matching grad),
-    batch_norm_inference  (no gradient -- inference-only).
+    batch_norm_inference  (no gradient -- inference-only),
+    sigmoid (+ grad), dense (+ grads), upsampling_bilinear_2d (+ grad).
 
 Keras layers exported from `opencl_tf.layers`:
-    OpenCLConv2D, OpenCLDepthwiseConv2D, OpenCLBatchNormalization, OpenCLReLU.
+    OpenCLConv2D, OpenCLDepthwiseConv2D, OpenCLBatchNormalization,
+    OpenCLReLU, OpenCLSigmoid, OpenCLDense, OpenCLUpSampling2D.
 """
 
 from ._library import raw_ops
@@ -27,6 +29,8 @@ from .ops import (
     batch_norm_training,
     batch_norm_inference,
     batch_norm_grad,
+    sigmoid,
+    sigmoid_grad,
 )
 from . import gradients  # noqa: F401  -- registers @RegisterGradient hooks
 from . import layers
@@ -44,6 +48,8 @@ __all__ = [
     "batch_norm_training",
     "batch_norm_inference",
     "batch_norm_grad",
+    "sigmoid",
+    "sigmoid_grad",
     "layers",
 ]
 

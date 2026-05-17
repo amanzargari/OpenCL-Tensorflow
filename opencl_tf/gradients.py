@@ -76,3 +76,14 @@ def _opencl_bn_training_grad(op, grad_y, grad_mean, grad_var):
 # OpenclBatchNormInference is inference-only; no gradient is registered.
 # If it ever appears inside tf.GradientTape, TF will raise a
 # LookupError, which is the desired behaviour.
+
+
+# ---------------------------------------------------------------------
+# Sigmoid
+# The forward op has ONE output y = sigmoid(x). The backward takes y
+# (not x) to compute grad_x = dy * y * (1 - y).
+# ---------------------------------------------------------------------
+@ops.RegisterGradient("OpenclSigmoid")
+def _opencl_sigmoid_grad(op, grad):
+    y = op.outputs[0]
+    return [raw_ops.opencl_sigmoid_grad(y, grad)]

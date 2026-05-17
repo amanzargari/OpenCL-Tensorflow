@@ -14,6 +14,7 @@ from .batchnorm import (
     batch_norm_inference,
     batch_norm_grad,
 )
+from .sigmoid import sigmoid, sigmoid_grad
 
 __all__ = [
     "conv2d",
@@ -27,4 +28,6 @@ __all__ = [
     "batch_norm_training",
     "batch_norm_inference",
     "batch_norm_grad",
+    "sigmoid",
+    "sigmoid_grad",
 ]

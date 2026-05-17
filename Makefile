@@ -15,7 +15,8 @@ SRC := src/cl_backend.cc \
        src/ops/conv2d_ops.cc \
        src/ops/depthwise_conv2d_ops.cc \
        src/ops/relu_ops.cc \
-       src/ops/batchnorm_ops.cc
+       src/ops/batchnorm_ops.cc \
+       src/ops/sigmoid_ops.cc
 OBJ := $(SRC:.cc=.o)
 
 TARGET := opencl_tf/opencl_tf_ops.so

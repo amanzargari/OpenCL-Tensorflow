@@ -18,6 +18,7 @@ from ._library import raw_ops
 from .ops.conv2d import conv2d
 from .ops.depthwise_conv2d import depthwise_conv2d
 from .ops.relu import relu
+from .ops.sigmoid import sigmoid
 
 
 def _as_pair(x) -> Tuple[int, int]:
@@ -210,3 +211,19 @@ class OpenCLReLU(layers.Layer):
 
     def call(self, x):
         return relu(x)
+
+    def get_config(self):
+        return super().get_config()
+
+
+# ---------------------------------------------------------------------
+# Sigmoid
+# ---------------------------------------------------------------------
+class OpenCLSigmoid(layers.Layer):
+    """Drop-in for `tf.keras.layers.Activation('sigmoid')`."""
+
+    def call(self, x):
+        return sigmoid(x)
+
+    def get_config(self):
+        return super().get_config()
