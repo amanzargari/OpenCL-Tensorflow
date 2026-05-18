@@ -54,16 +54,6 @@ is not selected, set `OCL_ICD_VENDORS=/etc/OpenCL/vendors/your.icd` before runni
 
 ## Install
 
-### From PyPI (after the package is published)
-
-```bash
-# Binary wheel — no compiler needed, just an OpenCL runtime:
-pip install opencl-tf
-
-# Then verify:
-python -c "import opencl_tf; print(opencl_tf.__version__)"
-```
-
 ### From source (this repo)
 
 #### 1. System packages
